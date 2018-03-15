@@ -17,5 +17,5 @@ It enables you to access the runtime status of your web applications with the mo
 ![Screenshot2](http://go.aukletapm.com/documentation/img/screenshot2.png)
 ![Screenshot3](http://go.aukletapm.com/documentation/img/screenshot3.png)
 
-For documentation please go to: [http://go.aukletapm.com/documentation/](http://go.aukletapm.com/documentation/)
+For documentation please go to: [http://go.aukletapm.com/documentation/getting-started/](http://go.aukletapm.com/documentation/getting-started/)  
 For usage questions, please use stack overflow with the “aukletapm-to-go-java” tag
