@@ -52,7 +52,8 @@ class AukletApmToGoHttpServletHandler {
         }
         if (enableCors) {
             httpServletResponse.addHeader("Access-Control-Allow-Origin", "http://localhost:8080")
-            httpServletResponse.addHeader("Access-Control-Allow-Methods", "GET, POST")
+            httpServletResponse.addHeader("Access-Control-Allow-Methods", "*")
+            httpServletResponse.addHeader("Access-Control-Allow-Headers", "*")
         }
         val result = try {
             val query = mapper.readValue(request.inputStream, Query::class.java)
