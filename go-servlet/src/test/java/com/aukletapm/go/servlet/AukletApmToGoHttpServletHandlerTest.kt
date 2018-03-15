@@ -70,7 +70,7 @@ class AukletApmToGoHttpServletHandlerTest {
         handler.handle(request, response)
 
         verify(response, never()).addHeader("Access-Control-Allow-Origin", "http://localhost:8080")
-        verify(response, never()).addHeader("Access-Control-Allow-Methods", "GET, POST")
+        verify(response, never()).addHeader("Access-Control-Allow-Methods", "*")
         verify(response, atLeast(1)).contentType = "text/html"
     }
 
@@ -86,7 +86,7 @@ class AukletApmToGoHttpServletHandlerTest {
         handler.handle(request, response)
 
         verify(response, atLeastOnce()).addHeader("Access-Control-Allow-Origin", "http://localhost:8080")
-        verify(response, atLeastOnce()).addHeader("Access-Control-Allow-Methods", "GET, POST")
+        verify(response, atLeastOnce()).addHeader("Access-Control-Allow-Methods", "*")
         verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
         assertEquals(true, JsonPath.parse(stringWriter.toString()).read<Boolean>("error"))
     }
