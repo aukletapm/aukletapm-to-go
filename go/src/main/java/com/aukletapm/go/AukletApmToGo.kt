@@ -41,6 +41,17 @@ class AukletApmToGo {
 
     fun addComponent(component: Component) {
         components.put(component.name, component)
+        if (component is OnInit) {
+            component.init()
+        }
+    }
+
+    fun removeComponent(name: String) {
+        val component = components.get(name)
+        components.remove(name)
+        if (component != null && component is OnDestroy) {
+            component.destroy()
+        }
     }
 
     companion object {
@@ -74,7 +85,7 @@ class AukletApmToGo {
         pages.put(page.name, page)
     }
 
-    class Page {
+    open class Page {
         private val aukletApmToGo: AukletApmToGo
         val name: String
 
@@ -103,12 +114,92 @@ class AukletApmToGo {
             aukletApmToGo.addPage(this)
             return aukletApmToGo
         }
+
+        fun startPieChart(name: String, description: String? = null): PieChart {
+            return PieChart(name, description, this)
+        }
+
+        fun startLineChart(name: String): LineChart.Builder {
+            return LineChart.Builder(name, this)
+        }
     }
 
+    class PieChartData() {
+        val labels = mutableListOf<String>()
+        val datasets = mutableListOf<Dataset>()
 
-    abstract class Component(val name: String, val type: String, val description: String? = null) {
-        abstract fun load(args: Any?): Any
+        class Dataset(var label: String) {
+            val data = mutableListOf<Double>()
+        }
+
+        class Builder {
+            private val labels = mutableListOf<String>()
+            private val datasets = mutableListOf<String>()
+            private val values = mutableMapOf<String, Double>()
+
+            fun data(labelOfDataset: String, labelOfData: String, value: Double): Builder {
+                if (!labels.contains(labelOfData)) {
+                    labels.add(labelOfData)
+                }
+                if (!datasets.contains(labelOfDataset)) {
+                    datasets.add(labelOfDataset)
+                }
+                values.put(labelOfDataset + labelOfData, value)
+                return this
+            }
+
+            fun data(labelOfData: String, value: Double): Builder {
+                return data("default", labelOfData, value)
+            }
+
+            fun dataset(labelOfDataset: String, data: Map<String, Double>): Builder {
+                data.forEach { t, u -> data(labelOfDataset, t, u) }
+                return this
+            }
+
+            fun build(): PieChartData {
+                val data = PieChartData()
+                data.labels.addAll(labels)
+
+                datasets.forEach { label ->
+                    val dataset = Dataset(label)
+
+                    labels.forEach { dataLabel ->
+                        var value = values.get(label + dataLabel)
+                        if (value == null) {
+                            value = 0.0
+                        }
+                        dataset.data.add(value)
+                    }
+                    data.datasets.add(dataset)
+                }
+
+                return data
+            }
+        }
+
+
     }
+
+    class PieChart(name: String, description: String?, private val page: Page) : Component(name, "PieChart", description) {
+        private var contentLoader: ((Any?) -> PieChartData)? = null
+
+        override fun load(args: Any?): Any {
+            val loader = this.contentLoader ?: throw NullPointerException("Content loader is null.")
+            return loader(args)
+        }
+
+        fun setContentLoader(contentLoader: (Any?) -> PieChartData): PieChart {
+            this.contentLoader = contentLoader
+            return this
+        }
+
+        fun endPieChart(): Page {
+            page.addComponent(this)
+            return page
+        }
+    }
+
 
     class AukletApmToGoList(name: String, description: String?, page: Page) : Component(name, "List", description) {
 

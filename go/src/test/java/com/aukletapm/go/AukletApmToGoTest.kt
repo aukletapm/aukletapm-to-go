@@ -21,7 +21,9 @@
 package com.aukletapm.go
 
 import com.aukletapm.go.AukletApmToGo.Companion.createInstance
+import org.mockito.Mockito.*
 import org.testng.annotations.Test
+import java.text.SimpleDateFormat
 import kotlin.test.*
 
 
@@ -33,6 +35,18 @@ class AukletApmToGoTest {
 
     val aukletApmToGoService = createInstance("Test Service")
 
+
+    @Test
+    fun testDestroy() {
+        val mockComponent = mock(LineChart::class.java)
+        `when`(mockComponent.name).thenReturn("test")
+        aukletApmToGoService.addComponent(mockComponent)
+        verify(mockComponent, atLeastOnce()).init()
+        aukletApmToGoService.removeComponent("test")
+        verify(mockComponent, atLeastOnce()).destroy()
+    }
+
+
     @Test(expectedExceptions = [IllegalStateException::class])
     fun indexPageHasNotInitialized() {
         aukletApmToGoService.handle()
@@ -42,6 +56,7 @@ class AukletApmToGoTest {
     fun testHandle() {
         assertEquals("Test Service", aukletApmToGoService.serviceName)
         val indexPage = aukletApmToGoService.startIndexPage("Welcome")
+
                 .startList("jvm_arguments", "JVM arguments")
                 .setContentLoader {
                     listOf(
@@ -50,10 +65,49 @@ class AukletApmToGoTest {
                     )
                 }
                 .endList()
+
                 .startList("will_encounter_exception_when_data_loading")
                 .setContentLoader {
                     throw IllegalStateException("some error occured")
-                }.endList()
+                }
+                .endList()
+
+                .startPieChart("pie", "Pie")
+                .setContentLoader {
+
+                    val dataset1 = mapOf<String, Double>(
+                            "Azerbaijan" to 123.1,
+                            "Azerbaijan" to 123.1,
+                            "Chile" to 13.3,
+                            "Finland" to 123.7
+                    )
+
+                    val dataset2 = mapOf<String, Double>(
+                            "Azerbaijan" to 123.1,
+                            "Bahrain" to 12.0,
+                            "Ecuador" to 293.123,
+                            "Finland" to 123.7
+                    )
+
+                    AukletApmToGo.PieChartData.Builder()
+                            .dataset("dataset1", dataset1)
+                            .dataset("dataset2", dataset2)
+                            .data("dataset1", "Cuba", 123.1)
+                            .data("Cuba", 123.1)
+                            .build()
+
+                }
+
+                .endPieChart()
+
+                .startLineChart("line")
+                .formatLabel { SimpleDateFormat("yyyy-MM-dd").format(it) }
+                .loadData {
+                    listOf()
+                }
+                .endLineChart()
+
+
         indexPage.endPage()
         val page = aukletApmToGoService.handle()
         assertEquals(indexPage, page)
@@ -61,6 +115,21 @@ class AukletApmToGoTest {
         val data = page.components[0].load(null)
         checkLoadedData(data)
     }
+
+    @Test(dependsOnMethods = ["testHandle"])
+    fun setPieChart() {
+        val result = aukletApmToGoService.load("pie", null)
+        if (result is AukletApmToGo.PieChartData) {
+            assertEquals(3, result.datasets.size)
+            assertEquals(6, result.labels.size)
+            assertEquals(123.1, result.datasets[0].data[0])
+            assertEquals(123.7, result.datasets[1].data[2])
+            assertEquals("dataset2", result.datasets[1].label)
+        } else {
+            assert(false)
+        }
+    }
+
 
     @Test(dependsOnMethods = ["testHandle"])
     fun testLoad() {
