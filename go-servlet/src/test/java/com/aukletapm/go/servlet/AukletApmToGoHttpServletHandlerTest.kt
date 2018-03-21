@@ -23,6 +23,7 @@ package com.aukletapm.go.servlet
 import com.aukletapm.go.AukletApmToGo
 import com.aukletapm.go.AukletApmToGo.Companion.createInstance
 import com.jayway.jsonpath.JsonPath
+import org.mockito.Matchers
 import org.mockito.Mockito
 import org.mockito.Mockito.*
 import org.testng.annotations.BeforeTest
@@ -52,15 +53,35 @@ class AukletApmToGoHttpServletHandlerTest {
                     listOf(AukletApmToGo.KeyValue("key1", "value1"))
                 }
                 .endList()
+
+                .startPieChart("pie")
+                .setContentLoader {
+                    AukletApmToGo.PieChartData.Builder().data("ds1", "a", 1.0).data("ds1", "b", 2.0).build()
+                }
+
+                .endPieChart()
+
                 .endPage()
         handler = AukletApmToGoHttpServletHandler.Builder().enableCors().debug().service(service).build()
     }
 
 
     @Test
+    fun whenEncounteringUnknownException() {
+        val request = Mockito.mock(HttpServletRequest::class.java)
+        val response = Mockito.mock(HttpServletResponse::class.java)
+        `when`(request.inputStream).thenThrow(RuntimeException())
+        val stringWriter = StringWriter()
+        val writer = PrintWriter(stringWriter)
+        Mockito.`when`(response.writer).thenReturn(writer)
+        `when`(request.getHeader("Accept")).thenReturn("application/json")
+        handler.handle(request, response)
+        assertEquals(true, JsonPath.parse(stringWriter.toString()).read<Boolean>("error"))
+        assertEquals("java.lang.RuntimeException", JsonPath.parse(stringWriter.toString()).read<String>("errorMessage"))
+    }
+
+    @Test
     fun testHandle() {
-
-
         val request = Mockito.mock(HttpServletRequest::class.java)
         val response = Mockito.mock(HttpServletResponse::class.java)
         val stringWriter = StringWriter()
@@ -213,8 +234,7 @@ class AukletApmToGoHttpServletHandlerTest {
         `when`(request.getHeader("Accept")).thenReturn("application/json")
         handler.handle(request, response)
         verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
-//        println(stringWriter.toString())
-
+        println(stringWriter.toString())
         val name = JsonPath.parse(stringWriter.toString()).read<String>("loadResponse.items[0].name")
         assertEquals("test_list", name)
 
@@ -223,6 +243,37 @@ class AukletApmToGoHttpServletHandlerTest {
 
         val value = JsonPath.parse(stringWriter.toString()).read<String>("loadResponse.items[0].data[0].value")
         assertEquals("value1", value)
+    }
+
+    @Test
+    fun loadPieChart() {
+        val content = """
+            {
+              "type" : 2,
+              "c":"",
+              "loadDataRequest": {
+                "items" : [
+                  {
+                    "name" : "pie",
+                    "args" : {
+                      "a":"a",
+                      "b": 1
+                    }
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
+        val request = Mockito.mock(HttpServletRequest::class.java)
+        Mockito.`when`(request.inputStream).thenReturn(MockServletInputStream(content))
+        val response = Mockito.mock(HttpServletResponse::class.java)
+        val stringWriter = StringWriter()
+        val writer = PrintWriter(stringWriter)
+        Mockito.`when`(response.writer).thenReturn(writer)
+        `when`(request.getHeader("Accept")).thenReturn("application/json")
+        handler.handle(request, response)
+        val name = JsonPath.parse(stringWriter.toString()).read<String>("loadResponse.items[0].name")
+        assertEquals("pie", name)
     }
 
 }
