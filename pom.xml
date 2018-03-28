@@ -26,7 +26,7 @@
     <groupId>com.aukletapm.go</groupId>
     <artifactId>go-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
     <description>
@@ -61,10 +61,26 @@
         <dokka.version>0.9.16</dokka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <dokka.version>0.9.16</dokka.version>
+        <spring.version>4.3.8.RELEASE</spring.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-mongodb</artifactId>
+                <version>1.10.3.RELEASE</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongo-java-driver</artifactId>
+                <version>3.3.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-jdbc</artifactId>
+                <version>${spring.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
@@ -143,7 +159,6 @@
             <artifactId>mockito-all</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
@@ -333,6 +348,7 @@
     <modules>
         <module>go</module>
         <module>go-servlet</module>
+        <module>go-spring</module>
     </modules>
 
     <distributionManagement>

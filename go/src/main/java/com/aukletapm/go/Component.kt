@@ -22,4 +22,17 @@ package com.aukletapm.go
 
 abstract class Component(open val name: String, val type: String, val description: String? = null) {
     abstract fun load(args: Any?): Any
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Component) return false
+
+        if (name != other.name) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
+
 }

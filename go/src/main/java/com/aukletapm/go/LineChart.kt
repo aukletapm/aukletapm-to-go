@@ -21,6 +21,7 @@
 package com.aukletapm.go
 
 import com.google.common.collect.EvictingQueue
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -46,10 +47,16 @@ open class LineChart(
         description: String?
 ) : Component(type = "LineChart", name = name, description = description), OnInit, OnDestroy {
 
+    enum class ValueMode {
+        NORMAL, DIFFERENCE
+    }
+
     private val scheduler = Executors.newScheduledThreadPool(1)
     private var handler: ScheduledFuture<*>? = null
     private val labels = EvictingQueue.create<Long>(maxSize)
     private var datasets = mutableMapOf<String, EvictingQueue<Point>>()
+    private val previousValue = mutableMapOf<String, Double>()
+    var valueMode: ValueMode = ValueMode.NORMAL
 
     class Point(var time: Long, var value: Double = 0.0) {
 
@@ -62,15 +69,17 @@ open class LineChart(
     }
 
     override fun init() {
-        val loadData = checkNotNull(loadData)
         handler = scheduler.scheduleAtFixedRate({
-            val time = System.currentTimeMillis()
-            loadData().forEach {
-                update(it.dataset, it.value, time)
-            }
+            tick()
         }, 0, interval, intervalUnit)
     }
 
+    private fun tick() {
+        val time = System.currentTimeMillis()
+        loadData().forEach {
+            update(it.dataset, it.value, time)
+        }
+    }
 
     class LoadData(val dataset: String, val value: Double)
 
@@ -100,6 +109,16 @@ open class LineChart(
      */
     @Synchronized
     fun update(dataset: String, value: Double, now: Long) {
+        var updateValue = value
+        if (valueMode == ValueMode.DIFFERENCE) {
+            var previous = previousValue.get(dataset)
+            if (previous == null) {
+                previous = value
+            }
+            updateValue = value - previous
+            previousValue.put(dataset, value)
+        }
+
         val dataIndex = LocalDateTime.ofInstant(Date(now).toInstant(), ZoneId.systemDefault()).truncatedTo(accuracy).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
         val point: Point
@@ -112,7 +131,7 @@ open class LineChart(
                 labels.add(dataIndex)
             }
         }
-        queue.last().update(value)
+        queue.last().update(updateValue)
     }
 
     private fun getQueue(dataset: String): EvictingQueue<Point> {
@@ -124,7 +143,7 @@ open class LineChart(
         return queue!!
     }
 
-    class Builder(private val name: String, private val page: AukletApmToGo.Page) {
+    class Builder(private val name: String, private val page: AukletApmToGo.Page? = null) {
         private var interval: Long = 1
         private var intervalUnit: TimeUnit = TimeUnit.SECONDS
         private var accuracy: ChronoUnit = ChronoUnit.MINUTES
@@ -132,10 +151,10 @@ open class LineChart(
         private var description: String? = null
         private var formatLabel: ((Long) -> String)? = null
         private var loadData: (() -> List<LoadData>)? = null
+        private var valueMode: ValueMode = ValueMode.NORMAL
 
         fun endLineChart(): AukletApmToGo.Page {
-            page.addComponent(build())
-            return page
+            return checkNotNull(page).addComponent(build())
         }
 
         fun description(description: String): Builder {
@@ -163,6 +182,11 @@ open class LineChart(
             return this
         }
 
+        fun valueMode(valueMode: ValueMode): Builder {
+            this.valueMode = valueMode
+            return this
+        }
+
         fun formatLabel(formatLabel: ((Long) -> String)): Builder {
             this.formatLabel = formatLabel
             return this
@@ -174,11 +198,26 @@ open class LineChart(
         }
 
         fun build(): LineChart {
-            val formatLabel = checkNotNull(formatLabel, { "formatLabel was null" })
+            val formatLabel = if (formatLabel == null) {
+                { SimpleDateFormat("HH:mm").format(it) }
+            } else {
+                formatLabel!!
+            }
             val loadData = checkNotNull(loadData, { "loadData was null" })
-            return LineChart(interval, intervalUnit, accuracy, maxSize, formatLabel, loadData, name, description)
+            if (description == null) {
+                description = name
+            }
+            val lineChart = LineChart(interval, intervalUnit, accuracy, maxSize, formatLabel, loadData, name, description)
+            lineChart.valueMode = valueMode
+            return lineChart
         }
 
+    }
+
+    companion object {
+        fun newBuilder(name: String, page: AukletApmToGo.Page? = null): Builder {
+            return Builder(name, page)
+        }
     }
 
 }

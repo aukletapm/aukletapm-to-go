@@ -192,5 +192,34 @@ class AukletApmToGoTest {
         }
     }
 
+    @Test
+    fun addComponents() {
+        val component1 = object : Component("test", "test") {
+            override fun load(args: Any?): Any {
+                return listOf<String>();
+            }
+        }
+
+        val component2 = object : Component("test", "test") {
+            override fun load(args: Any?): Any {
+                return listOf<String>();
+            }
+        }
+
+        val component3 = object : Component("test1", "test") {
+            override fun load(args: Any?): Any {
+                return listOf<String>();
+            }
+        }
+
+        val aukletApmTogo = AukletApmToGo.createInstance("test")
+                .startIndexPage("Index")
+                .addComponents(listOf(component1, component2, component3))
+                .endPage()
+
+        val result = aukletApmTogo.handle()
+        assertEquals(2, result.components.size)
+    }
+
 
 }
