@@ -28,7 +28,9 @@ import java.lang.management.ManagementFactory
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
@@ -126,5 +128,28 @@ class LineChartTest {
         }
         lineChart.destroy()
     }
+
+
+    @Test
+    fun testValueMode() {
+        val lineChart = LineChart
+                .newBuilder("test")
+                .valueMode(LineChart.ValueMode.DIFFERENCE)
+                .loadData {
+                    listOf()
+                }.build()
+
+        lineChart.update("", 10.0, Date.from(LocalDateTime.parse("2007-12-03T10:15:30").atZone(ZoneId.systemDefault()).toInstant()).time)
+        lineChart.update("", 12.0, Date.from(LocalDateTime.parse("2007-12-03T10:15:30").atZone(ZoneId.systemDefault()).toInstant()).time)
+        lineChart.update("", 12.4, Date.from(LocalDateTime.parse("2007-12-03T10:16:30").atZone(ZoneId.systemDefault()).toInstant()).time)
+
+        val result = lineChart.load(null)
+        if (result is LineChart.LineChartData) {
+            org.testng.Assert.assertEquals(2.0, result.datasets.get(0).data[0], 0.001)
+            org.testng.Assert.assertEquals(0.4, result.datasets.get(0).data[1], 0.001)
+        }
+
+    }
+
 
 }

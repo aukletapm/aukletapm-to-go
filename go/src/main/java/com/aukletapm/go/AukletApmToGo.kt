@@ -98,9 +98,19 @@ class AukletApmToGo {
             this.name = name
         }
 
-        fun addComponent(component: Component) {
-            components.add(component)
-            aukletApmToGo.addComponent(component)
+        fun addComponent(component: Component): Page {
+            if (!components.contains(component)) {
+                components.add(component)
+                aukletApmToGo.addComponent(component)
+            }
+            return this
+        }
+
+        fun addComponents(components: List<Component>): Page {
+            components.forEach {
+                addComponent(it)
+            }
+            return this
         }
 
         fun startList(name: String, description: String? = null): AukletApmToGoList {
@@ -122,6 +132,7 @@ class AukletApmToGo {
         fun startLineChart(name: String): LineChart.Builder {
             return LineChart.Builder(name, this)
         }
+
     }
 
     class PieChartData() {
@@ -181,7 +192,7 @@ class AukletApmToGo {
 
     }
 
-    class PieChart(name: String, description: String?, private val page: Page) : Component(name, "PieChart", description) {
+    class PieChart(name: String, description: String? = null, private val page: Page? = null) : Component(name, "PieChart", description) {
         private var contentLoader: ((Any?) -> PieChartData)? = null
 
         override fun load(args: Any?): Any {
@@ -195,15 +206,14 @@ class AukletApmToGo {
         }
 
         fun endPieChart(): Page {
-            page.addComponent(this)
-            return page
+            return checkNotNull(page).addComponent(this)
         }
     }
 
 
-    class AukletApmToGoList(name: String, description: String?, page: Page) : Component(name, "List", description) {
+    class AukletApmToGoList(name: String, description: String? = null, page: Page? = null) : Component(name, "List", description) {
 
-        private val page: Page = page
+        private var page: Page? = page
 
         private var contentLoader: ((Any?) -> Any)? = null
 
@@ -218,8 +228,7 @@ class AukletApmToGo {
         }
 
         fun endList(): Page {
-            page.addComponent(this)
-            return page
+            return checkNotNull(page).addComponent(this)
         }
 
     }

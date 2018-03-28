@@ -20,6 +20,16 @@
 
 package com.aukletapm.go
 
+/**
+ * @author Eric Xu
+ * @date 27/03/2018
+ */
 class LoadDataRequest {
     var items = mutableListOf<LoadDataRequestItem>()
+    fun addComponent(name: String): LoadDataRequest {
+        val item = LoadDataRequestItem()
+        item.name = name
+        items.add(item)
+        return this
+    }
 }
