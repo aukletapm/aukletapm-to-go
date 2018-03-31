@@ -51,7 +51,7 @@ class AukletApmToGoHttpServletHandler {
             return
         }
         if (enableCors) {
-            httpServletResponse.addHeader("Access-Control-Allow-Origin", "http://localhost:8080")
+            httpServletResponse.addHeader("Access-Control-Allow-Origin", "*")
             httpServletResponse.addHeader("Access-Control-Allow-Methods", "*")
             httpServletResponse.addHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
         }
