@@ -18,23 +18,13 @@
  * limitations under the License.
  */
 
-package com.aukletapm.go.servlet
-
-import com.aukletapm.go.AukletApmToGo
-import com.aukletapm.go.LoadDataResponse
+package com.aukletapm.go
 
 /**
  *
  * @author Eric Xu
- * @date 27/02/2018
+ * @date 31/03/2018
  */
-class Response(
-        val serviceName: String = "",
-        var error: Boolean = false,
-        var errorMessage: String? = null,
-        var component: AukletApmToGo.Page? = null,
-        var loadResponse: LoadDataResponse? = null,
-        val time: Long? = null,
-        val timeZone: Int? = null,
-        val version: String? = null
-)
+interface Module {
+    fun components(): List<Component>
+}

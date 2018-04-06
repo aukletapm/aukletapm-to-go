@@ -22,26 +22,37 @@ package com.aukletapm.go.servlet
 
 
 import com.aukletapm.go.AukletApmToGo
+import com.aukletapm.go.Module
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.util.*
+import java.util.zip.GZIPOutputStream
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
+
 
 /**
  *
  * @author Eric Xu
  * @date 28/01/2018
  */
-class AukletApmToGoHttpServletHandler {
+class AukletApmToGoHttpServletHandler(val service: AukletApmToGo) {
 
-    private val log = LoggerFactory.getLogger(AukletApmToGoHttpServletHandler::class.java)
-    private lateinit var service: com.aukletapm.go.AukletApmToGo
     private var enableCors: Boolean = false
     private lateinit var mapper: ObjectMapper
+
+    companion object {
+        private val log = LoggerFactory.getLogger(AukletApmToGoHttpServletHandler::class.java)
+
+        fun newBuilder(): Builder {
+            return Builder()
+        }
+    }
 
 
     fun handle(request: HttpServletRequest, httpServletResponse: HttpServletResponse) {
@@ -53,34 +64,41 @@ class AukletApmToGoHttpServletHandler {
         if (enableCors) {
             httpServletResponse.addHeader("Access-Control-Allow-Origin", "*")
             httpServletResponse.addHeader("Access-Control-Allow-Methods", "*")
+            httpServletResponse.addHeader("Access-Control-Max-Age", "86400")
             httpServletResponse.addHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
         }
+
+        val timeZone = TimeZone.getDefault().rawOffset
+        val time = Date().time
+
         val result = try {
             val query = mapper.readValue(request.inputStream, Query::class.java)
             log.debug("client version ${query.version}")
+
+
             if (1 == query.type) {
-                mapper.writeValueAsString(Response(serviceName = service.serviceName, component = service.handle(query.c)))
+                mapper.writeValueAsString(Response(serviceName = service.serviceName, component = service.handle(query.c), time = time, timeZone = timeZone, version = service.version))
             } else if (2 == query.type) {
-                mapper.writeValueAsString(Response(loadResponse = service.load(checkNotNull(query.loadDataRequest, { "loadDataRequest was null" }))))
+                mapper.writeValueAsString(Response(serviceName = service.serviceName, loadResponse = service.load(checkNotNull(query.loadDataRequest, { "loadDataRequest was null" })), time = time, timeZone = timeZone, version = service.version))
             } else {
                 throw IllegalStateException("Invalid type ${query.type}")
             }
         } catch (e: JsonMappingException) {
             log.error("Exception while json mapping", e)
-            mapper.writeValueAsString(Response(error = true, errorMessage = "Invalid request body"))
+            mapper.writeValueAsString(Response(serviceName = service.serviceName, error = true, errorMessage = "Invalid request body", time = time, timeZone = timeZone, version = service.version))
         } catch (e: Exception) {
             log.error("System encountered an error.", e)
             var errorMessage = e.message
             if (errorMessage == null) {
                 errorMessage = e.toString()
             }
-            mapper.writeValueAsString(Response(error = true, errorMessage = errorMessage))
+            mapper.writeValueAsString(Response(serviceName = service.serviceName, error = true, errorMessage = errorMessage, time = time, timeZone = timeZone, version = service.version))
         }
 
         write(httpServletResponse, result, "application/json;charset=UTF-8")
     }
 
-    fun renderIndexPage(httpServletResponse: HttpServletResponse) {
+    private fun renderIndexPage(httpServletResponse: HttpServletResponse) {
         write(httpServletResponse, getIndexPageContent(), "text/html")
     }
 
@@ -99,18 +117,35 @@ class AukletApmToGoHttpServletHandler {
         return result.toString()
     }
 
-    fun write(httpServletResponse: HttpServletResponse, content: String, contentType: String) {
+    private fun write(httpServletResponse: HttpServletResponse, content: String, contentType: String) {
         httpServletResponse.contentType = contentType
         httpServletResponse.status = HttpServletResponse.SC_OK;
-        httpServletResponse.writer.write(content);
-        httpServletResponse.writer.flush();
-        httpServletResponse.writer.close();
+
+        httpServletResponse.setHeader("Content-Encoding", "gzip")
+        GZIPOutputStream(httpServletResponse.outputStream).use { gzip ->
+            OutputStreamWriter(gzip, "UTF-8").use { writer ->
+                writer.write(content)
+            }
+        }
+
     }
 
     class Builder {
         private var service: AukletApmToGo? = null
         private var enableCors = false
         private var debug = false
+        private var name: String? = null
+        private val modules = mutableListOf<Module>()
+
+        fun name(name: String): Builder {
+            this.name = name
+            return this
+        }
+
+        fun addModule(module: Module): Builder {
+            modules.add(module)
+            return this
+        }
 
         fun service(service: AukletApmToGo): Builder {
             this.service = service
@@ -127,8 +162,19 @@ class AukletApmToGoHttpServletHandler {
             if (debug) {
                 mapper.enable(SerializationFeature.INDENT_OUTPUT)
             }
-            val handler = AukletApmToGoHttpServletHandler()
-            handler.service = checkNotNull(service, { "Server was null" })
+
+            var service: AukletApmToGo? = service
+            if (service == null) {
+                var name = name
+                if (name == null) {
+                    name = "Default Name"
+                }
+                log.info("not specify service, create a default service [$name]")
+                service = AukletApmToGo.createInstance(name).startIndexPage(name).endPage()
+            }
+
+            val handler = AukletApmToGoHttpServletHandler(service)
+            handler.service.indexPage().addComponents(modules.flatMap { it.components() })
             handler.enableCors = enableCors
             handler.mapper = mapper
             return handler

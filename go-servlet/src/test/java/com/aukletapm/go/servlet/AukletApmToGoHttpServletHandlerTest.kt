@@ -28,8 +28,11 @@ import org.mockito.Mockito
 import org.mockito.Mockito.*
 import org.testng.annotations.BeforeTest
 import org.testng.annotations.Test
-import java.io.PrintWriter
-import java.io.StringWriter
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStreamReader
+import java.util.zip.GZIPInputStream
+import javax.servlet.ServletOutputStream
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import kotlin.test.assertEquals
@@ -71,28 +74,58 @@ class AukletApmToGoHttpServletHandlerTest {
         val request = Mockito.mock(HttpServletRequest::class.java)
         val response = Mockito.mock(HttpServletResponse::class.java)
         `when`(request.inputStream).thenThrow(RuntimeException())
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("application/json")
-        handler.handle(request, response)
-        assertEquals(true, JsonPath.parse(stringWriter.toString()).read<Boolean>("error"))
-        assertEquals("java.lang.RuntimeException", JsonPath.parse(stringWriter.toString()).read<String>("errorMessage"))
+
+        handle(request, response) {
+            println(it)
+            assertEquals(true, JsonPath.parse(it).read<Boolean>("error"))
+            assertEquals("java.lang.RuntimeException", JsonPath.parse(it).read<String>("errorMessage"))
+        }
+    }
+
+    private fun handle(request: HttpServletRequest, response: HttpServletResponse, function: (result: String) -> Unit) {
+
+        val mockOut = mock(ServletOutputStream::class.java)
+        `when`(response.outputStream).thenReturn(mockOut)
+
+        ByteArrayOutputStream().use { out ->
+
+            `when`(mockOut.write(Matchers.anyObject(), Matchers.anyInt(), Matchers.anyInt())).then { invocation ->
+                out.write(invocation.arguments[0] as ByteArray, invocation.arguments[1] as Int, invocation.arguments[2] as Int)
+            }
+            `when`(mockOut.write(Matchers.any(ByteArray::class.java))).then { invocation ->
+                out.write(invocation.arguments[0] as ByteArray)
+            }
+            `when`(mockOut.write(Matchers.anyInt())).then { invocation ->
+                out.write(invocation.arguments[0] as Int)
+            }
+
+            handler.handle(request, response)
+
+            ByteArrayInputStream(out.toByteArray()).use {
+                GZIPInputStream(it).use {
+                    InputStreamReader(it, "UTF-8").use {
+                        function(it.readText())
+                    }
+                }
+            }
+        }
+
+
     }
 
     @Test
     fun testHandle() {
         val request = Mockito.mock(HttpServletRequest::class.java)
         val response = Mockito.mock(HttpServletResponse::class.java)
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
-        handler.handle(request, response)
 
-        verify(response, never()).addHeader("Access-Control-Allow-Origin", "http://localhost:8080")
-        verify(response, never()).addHeader("Access-Control-Allow-Methods", "*")
-        verify(response, atLeast(1)).contentType = "text/html"
+        handle(request, response) {
+            verify(response, never()).addHeader("Access-Control-Allow-Origin", "*")
+            verify(response, never()).addHeader("Access-Control-Allow-Methods", "*")
+            verify(response, atLeast(1)).contentType = "text/html"
+        }
+
     }
 
 
@@ -100,18 +133,17 @@ class AukletApmToGoHttpServletHandlerTest {
     fun withoutBody() {
         val request = Mockito.mock(HttpServletRequest::class.java)
         val response = Mockito.mock(HttpServletResponse::class.java)
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("application/json")
-        handler.handle(request, response)
 
-        verify(response, atLeastOnce()).addHeader("Access-Control-Allow-Origin", "http://localhost:8080")
-        verify(response, atLeastOnce()).addHeader("Access-Control-Allow-Methods", "*")
-        verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
-        assertEquals(true, JsonPath.parse(stringWriter.toString()).read<Boolean>("error"))
+        handle(request, response) {
+            verify(response, atLeastOnce()).addHeader("Access-Control-Allow-Origin", "*")
+            verify(response, atLeastOnce()).addHeader("Access-Control-Allow-Methods", "*")
+            verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
+
+            assertEquals(true, JsonPath.parse(it).read<Boolean>("error"))
+        }
+
     }
-
 
     @Test
     fun invalidJsonBody() {
@@ -121,15 +153,13 @@ class AukletApmToGoHttpServletHandlerTest {
         val request = Mockito.mock(HttpServletRequest::class.java)
         Mockito.`when`(request.inputStream).thenReturn(MockServletInputStream(content))
         val response = Mockito.mock(HttpServletResponse::class.java)
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("application/json")
-        handler.handle(request, response)
-        verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
-        println(stringWriter.toString())
-        val error = JsonPath.parse(stringWriter.toString()).read<Boolean>("error")
-        assertEquals(true, error)
+
+        handle(request, response) {
+            verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
+            val error = JsonPath.parse(it).read<Boolean>("error")
+            assertEquals(true, error)
+        }
     }
 
     @Test
@@ -155,17 +185,15 @@ class AukletApmToGoHttpServletHandlerTest {
         val request = Mockito.mock(HttpServletRequest::class.java)
         Mockito.`when`(request.inputStream).thenReturn(MockServletInputStream(content))
         val response = Mockito.mock(HttpServletResponse::class.java)
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("application/json")
-        handler.handle(request, response)
-        verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
-        println(stringWriter.toString())
-        val errorMessage = JsonPath.parse(stringWriter.toString()).read<String>("errorMessage")
-        assertEquals("Invalid type 99", errorMessage)
-        val error = JsonPath.parse(stringWriter.toString()).read<Boolean>("error")
-        assertEquals(true, error)
+
+        handle(request, response) {
+            verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
+            val errorMessage = JsonPath.parse(it).read<String>("errorMessage")
+            assertEquals("Invalid type 99", errorMessage)
+            val error = JsonPath.parse(it).read<Boolean>("error")
+            assertEquals(true, error)
+        }
     }
 
     @Test
@@ -191,13 +219,12 @@ class AukletApmToGoHttpServletHandlerTest {
         val request = Mockito.mock(HttpServletRequest::class.java)
         Mockito.`when`(request.inputStream).thenReturn(MockServletInputStream(content))
         val response = Mockito.mock(HttpServletResponse::class.java)
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("application/json")
-        handler.handle(request, response)
-        verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
-//        println(stringWriter.toString())
+
+        handle(request, response) {
+            verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
+        }
+
     }
 
     @Test(dependsOnMethods = ["testHandle"])
@@ -228,21 +255,20 @@ class AukletApmToGoHttpServletHandlerTest {
         val request = Mockito.mock(HttpServletRequest::class.java)
         Mockito.`when`(request.inputStream).thenReturn(MockServletInputStream(content))
         val response = Mockito.mock(HttpServletResponse::class.java)
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("application/json")
-        handler.handle(request, response)
-        verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
-        println(stringWriter.toString())
-        val name = JsonPath.parse(stringWriter.toString()).read<String>("loadResponse.items[0].name")
-        assertEquals("test_list", name)
 
-        val key = JsonPath.parse(stringWriter.toString()).read<String>("loadResponse.items[0].data[0].key")
-        assertEquals("key1", key)
+        handle(request, response) {
+            verify(response, atLeast(1)).contentType = "application/json;charset=UTF-8"
+            val name = JsonPath.parse(it).read<String>("loadResponse.items[0].name")
+            assertEquals("test_list", name)
 
-        val value = JsonPath.parse(stringWriter.toString()).read<String>("loadResponse.items[0].data[0].value")
-        assertEquals("value1", value)
+            val key = JsonPath.parse(it).read<String>("loadResponse.items[0].data[0].key")
+            assertEquals("key1", key)
+
+            val value = JsonPath.parse(it).read<String>("loadResponse.items[0].data[0].value")
+            assertEquals("value1", value)
+        }
+
     }
 
     @Test
@@ -267,13 +293,13 @@ class AukletApmToGoHttpServletHandlerTest {
         val request = Mockito.mock(HttpServletRequest::class.java)
         Mockito.`when`(request.inputStream).thenReturn(MockServletInputStream(content))
         val response = Mockito.mock(HttpServletResponse::class.java)
-        val stringWriter = StringWriter()
-        val writer = PrintWriter(stringWriter)
-        Mockito.`when`(response.writer).thenReturn(writer)
         `when`(request.getHeader("Accept")).thenReturn("application/json")
-        handler.handle(request, response)
-        val name = JsonPath.parse(stringWriter.toString()).read<String>("loadResponse.items[0].name")
-        assertEquals("pie", name)
+
+        handle(request, response) {
+            val name = JsonPath.parse(it).read<String>("loadResponse.items[0].name")
+            assertEquals("pie", name)
+        }
+
     }
 
 }
