@@ -1,5 +1,5 @@
-[![Build Status](https://api.travis-ci.org/aukletapm/aukletapm-to-go.svg?branch=master)](https://travis-ci.org/aukletapm/aukletapm-to-go)
-[![Coverage Status](https://codecov.io/gh/aukletapm/aukletapm-to-go/branch/master/graph/badge.svg)](https://codecov.io/gh/aukletapm/aukletapm-to-go/branch/master)
+[![Build Status](https://api.travis-ci.org/aukletapm/aukletapm-to-go.svg?branch=develop)](https://travis-ci.org/aukletapm/aukletapm-to-go)
+[![Coverage Status](https://codecov.io/gh/aukletapm/aukletapm-to-go/branch/develop/graph/badge.svg)](https://codecov.io/gh/aukletapm/aukletapm-to-go/branch/develop)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.aukletapm.go/go/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.aukletapm.go/go)
 [![](https://img.shields.io/github/license/aukletapm/aukletapm-to-go.svg)](./LICENSE)
 
