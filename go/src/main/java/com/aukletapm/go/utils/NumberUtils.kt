@@ -18,23 +18,22 @@
  * limitations under the License.
  */
 
-package com.aukletapm.go.servlet
+package com.aukletapm.go.utils
 
-import com.aukletapm.go.AukletApmToGo
-import com.aukletapm.go.LoadDataResponse
+import java.text.DecimalFormat
 
 /**
  *
  * @author Eric Xu
- * @date 27/02/2018
+ * @date 01/04/2018
  */
-class Response(
-        val serviceName: String = "",
-        var error: Boolean = false,
-        var errorMessage: String? = null,
-        var component: AukletApmToGo.Page? = null,
-        var loadResponse: LoadDataResponse? = null,
-        val time: Long? = null,
-        val timeZone: Int? = null,
-        val version: String? = null
-)
+class NumberUtils {
+    companion object {
+        fun readableFileSize(size: Long): String {
+            if (size <= 0) return "0"
+            val units = arrayOf("B", "kB", "MB", "GB", "TB")
+            val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
+            return DecimalFormat("#,##0.#").format(size / Math.pow(1024.0, digitGroups.toDouble())) + " " + units[digitGroups]
+        }
+    }
+}

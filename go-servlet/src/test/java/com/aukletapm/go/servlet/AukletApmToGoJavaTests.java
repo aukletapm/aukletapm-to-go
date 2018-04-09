@@ -18,23 +18,24 @@
  * limitations under the License.
  */
 
-package com.aukletapm.go.servlet
+package com.aukletapm.go.servlet;
 
-import com.aukletapm.go.AukletApmToGo
-import com.aukletapm.go.LoadDataResponse
+import com.aukletapm.go.module.JvmModule;
+import com.aukletapm.go.module.OsModule;
+import org.testng.annotations.Test;
 
 /**
- *
  * @author Eric Xu
- * @date 27/02/2018
+ * @date 31/03/2018
  */
-class Response(
-        val serviceName: String = "",
-        var error: Boolean = false,
-        var errorMessage: String? = null,
-        var component: AukletApmToGo.Page? = null,
-        var loadResponse: LoadDataResponse? = null,
-        val time: Long? = null,
-        val timeZone: Int? = null,
-        val version: String? = null
-)
+public class AukletApmToGoJavaTests {
+
+    @Test
+    public void test() {
+        AukletApmToGoHttpServletHandler aukletApmToGoHttpServletHandler = AukletApmToGoHttpServletHandler.Companion.newBuilder()
+                .addModule(new JvmModule()) //Heap, Thread
+                .addModule(new OsModule()) //CPU, Disk
+                .build();
+    }
+
+}

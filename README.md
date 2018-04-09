@@ -6,68 +6,107 @@
 
 AukletAPM To Go
 ---
-AukletAPM To Go provides a group of fluent API(Java, Kotlin) for you to integrate your web applications.  
-You can use it for monitoring system performance or any other data, which you want to see it with the mobile phone.
+AukletAPM To Go is a free Android App for Java Web Application monitoring and alerting.    
+We provide the fluent API to expose an HTTP interface, which is for the AukletAPM To Go and the alerting server to access.
 
-#### Show system properties
-```java
-aukletApmToGoService
-.startList("system_properties", "System Properties")
-.setContentLoader(o -> System.getProperties().entrySet().stream().map(objectObjectEntry -> new AukletApmToGo.KeyValue(objectObjectEntry.getKey().toString(), objectObjectEntry.getValue().toString())).collect(Collectors.toList()))
-.endList()
+
+
+## Download
+<a href="https://play.google.com/store/apps/details?id=com.aukletapm.go" target="_blank">Google Play</a>
+
+<a href="http://go.aukletapm.com/downloads/android/aukletapm-to-go.apk" target="_blank">Direct Download</a>
+
+## Installation
+
+#### Maven
+
+```xml
+<dependency>
+    <groupId>com.aukletapm.go</groupId>
+    <artifactId>go-servlet</artifactId>
+  <version>1.6.0</version>
+</dependency>
+```
+#### Gradle
 
 ```
-
-#### Show OS information
-```java
-aukletApmToGoService
-.startList("os_info", "OS Information") //shows OS information in a list component
-.setContentLoader(o -> {
-    OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-    return Lists.newArrayList(
-            new AukletApmToGo.KeyValue("Available Processors", String.format("%s", os.getAvailableProcessors())),
-            new AukletApmToGo.KeyValue("System Load Average", String.format("%s", os.getSystemLoadAverage())),
-            new AukletApmToGo.KeyValue("Arch", os.getArch())
-    );
-
-})
-.endList()
+compile group: 'com.aukletapm.go', name: 'go-servlet', version: '1.6.0'
 ```
 
-#### Show some user data
+#### Create servlet handle
 ```java
-aukletApmToGoService
-.startPieChart("most_popular_programming_languages", "Most Popular Programming Languages")
-.setContentLoader(o -> new AukletApmToGo.PieChartData.Builder()
-        .data("2017", "Java", 13.27)
-        .data("2017", "C", 10.16)
-        .data("2017", "Python", 3.78)
-        .data("2016", "Java", 11.27)
-        .data("2016", "C", 16.33)
-        .data("2016", "Python", 2.11)
-        .build())
-.endPieChart()
+AukletApmToGoHttpServletHandler aukletApmToGoHttpServletHandler = AukletApmToGoHttpServletHandler.newBuilder()
+                .name("My Site")
+                .addModule(new OsModule())
+                .addModule(new JvmModule())
+                .build();
 ```
 
-#### Show CPU load
+#### Spring MVC Integration
+
+
+
 ```java
-aukletApmToGoService
-.startLineChart("cpu")
-.description("CPU")
-.formatLabel(time -> new SimpleDateFormat("HH:mm").format(time))
-.loadData(() -> {
-    OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-    if (os instanceof UnixOperatingSystemMXBean) {
-        return Lists.newArrayList(
-                new LineChart.LoadData("Process Cpu Load", ((UnixOperatingSystemMXBean) os).getProcessCpuLoad()),
-                new LineChart.LoadData("System Cpu Load", ((UnixOperatingSystemMXBean) os).getSystemCpuLoad())
-        );
-    } else {
-        return new ArrayList();
+@Controller
+public class SampleController {
+
+    private AukletApmToGoHttpServletHandler aukletApmToGoHttpServletHandler;
+
+    @PostConstruct
+    public void init() {
+        aukletApmToGoHttpServletHandler = AukletApmToGoHttpServletHandler.newBuilder()
+                .name("My Site")
+                .addModule(new OsModule())
+                .addModule(new JvmModule())
+                .build();
     }
-})
-.endLineChart()
+
+    @CrossOrigin(origins = {"*"})
+    @RequestMapping("/aukletapm-to-go")
+    public void akuletGoEndpoint(HttpServletRequest request, HttpServletResponse response) {
+        aukletApmToGoHttpServletHandler.handle(request, response);
+    }
+
+    @RequestMapping("/")
+    public String home() {
+        return "redirect:/aukletapm-to-go";
+    }
+
+}
 ```
+
+#### Servlet Integration
+```java
+@WebServlet("/aukletapm-to-go")
+public class AukletApmToGoServlet extends HttpServlet {
+
+    private AukletApmToGoHttpServletHandler servletHandler;
+
+    @Override
+    public void init() throws ServletException {
+        servletHandler = AukletApmToGoHttpServletHandler.newBuilder().enableCors().name("My Site")
+                .addModule(new OsModule())
+                .addModule(new JvmModule())
+                .build();
+    }
+
+    @Override
+    protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        servletHandler.handle(req, resp);
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        servletHandler.handle(req, resp);
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        servletHandler.handle(req, resp);
+    }
+
+}
+```
+
 
 For documentation please go to: [http://go.aukletapm.com/documentation/](http://go.aukletapm.com/documentation/)  
-For usage questions, please use stack overflow with the “aukletapm-to-go-java” tag

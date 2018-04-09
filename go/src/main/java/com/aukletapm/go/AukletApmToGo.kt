@@ -21,6 +21,9 @@
 package com.aukletapm.go
 
 import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.util.*
+
 
 /**
  *
@@ -35,8 +38,15 @@ class AukletApmToGo {
     private val components = mutableMapOf<String, Component>()
     private val pages = mutableMapOf<String, Page>()
 
-    constructor(serviceName: String) {
+    val version: String
+
+    constructor(serviceName: String, version: String) {
         this.serviceName = serviceName
+        this.version = version
+    }
+
+    fun indexPage(): Page {
+        return getPage("index")
     }
 
     fun addComponent(component: Component) {
@@ -55,8 +65,12 @@ class AukletApmToGo {
     }
 
     companion object {
+        @JvmStatic
         fun createInstance(serviceName: String): AukletApmToGo {
-            return AukletApmToGo(serviceName)
+            val prop = Properties()
+            prop.load(AukletApmToGo::class.java!!.getClassLoader().getResourceAsStream("aukletapm-to-go.properties"))
+            val version = prop.getProperty("version")
+            return AukletApmToGo(serviceName, version)
         }
     }
 
@@ -209,7 +223,6 @@ class AukletApmToGo {
             return checkNotNull(page).addComponent(this)
         }
     }
-
 
     class AukletApmToGoList(name: String, description: String? = null, page: Page? = null) : Component(name, "List", description) {
 

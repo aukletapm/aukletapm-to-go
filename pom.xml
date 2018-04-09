@@ -26,7 +26,7 @@
     <groupId>com.aukletapm.go</groupId>
     <artifactId>go-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.5.1</version>
+    <version>1.6.0</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
     <description>
