@@ -65,6 +65,7 @@ class AukletApmToGo {
     }
 
     companion object {
+        @JvmStatic
         fun createInstance(serviceName: String): AukletApmToGo {
             val prop = Properties()
             prop.load(AukletApmToGo::class.java!!.getClassLoader().getResourceAsStream("aukletapm-to-go.properties"))

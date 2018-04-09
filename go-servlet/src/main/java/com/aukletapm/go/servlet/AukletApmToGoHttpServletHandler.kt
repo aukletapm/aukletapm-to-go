@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
+import java.nio.charset.Charset
 import java.util.*
 import java.util.zip.GZIPOutputStream
 import javax.servlet.http.HttpServletRequest
@@ -49,6 +50,7 @@ class AukletApmToGoHttpServletHandler(val service: AukletApmToGo) {
     companion object {
         private val log = LoggerFactory.getLogger(AukletApmToGoHttpServletHandler::class.java)
 
+        @JvmStatic
         fun newBuilder(): Builder {
             return Builder()
         }
@@ -103,18 +105,10 @@ class AukletApmToGoHttpServletHandler(val service: AukletApmToGo) {
     }
 
     fun getIndexPageContent(): String {
-        val result = StringBuilder()
         val resource = this.javaClass.getResourceAsStream("/index.html")
         resource.use({ inputStream ->
-            val bufferedReader = BufferedReader(InputStreamReader(inputStream))
-            var line: String? = bufferedReader.readLine()
-            while (line != null) {
-                result.append(line)
-                line = bufferedReader.readLine()
-            }
-            inputStream.close()
+            return inputStream.reader(Charset.forName("UTF-8")).readText()
         })
-        return result.toString()
     }
 
     private fun write(httpServletResponse: HttpServletResponse, content: String, contentType: String) {
